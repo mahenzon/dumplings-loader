@@ -258,13 +258,9 @@ and `examples/static-esm.html` are the copy-paste templates for static pages.
 
 ## Releasing
 
-- **Demo site**: every push to `master` runs [`pages.yaml`](.github/workflows/pages.yaml), which
-  lints, builds, and deploys `site/` (with `dist/` inside) to GitHub Pages. One-time setup:
-  Settings → Pages → Source: **GitHub Actions**.
-- **npm**: `npm version minor && git push --follow-tags`. The `v*` tag triggers
-  [`release.yaml`](.github/workflows/release.yaml): lint, build, `npm publish --provenance`, GitHub
-  release with generated notes. One-time setup: add an npm automation token as the `NPM_TOKEN`
-  repository secret.
+Push to `master` redeploys the demo site; pushing a `v*` tag (`npm version minor && git push --follow-tags`)
+publishes to npm with provenance and creates a GitHub release. One-time setup and the full
+checklist: [RELEASING.md](RELEASING.md).
 
 ## License
 

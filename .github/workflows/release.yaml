@@ -2,7 +2,8 @@ name: Release
 
 # Publishes to npm and creates a GitHub release when a `v*` tag is pushed:
 #   npm version minor && git push --follow-tags
-# Needs an npm automation token in the NPM_TOKEN repository secret.
+# Auth: npm trusted publishing (OIDC, configured on npmjs.com for this repo + workflow file) is used
+# by default; if an NPM_TOKEN repository secret exists it is used instead. See RELEASING.md.
 
 on:
   push:
@@ -15,6 +16,8 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -23,6 +26,9 @@ jobs:
           node-version: 22
           cache: npm
           registry-url: https://registry.npmjs.org
+
+      - name: npm >= 11.5 (trusted publishing support)
+        run: npm install -g npm@latest
 
       - run: npm ci
 
@@ -35,12 +41,23 @@ jobs:
       - name: Tag must match package.json version
         run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
 
-      - name: Publish to npm (with provenance)
-        run: npm publish --provenance --access public
+      - name: Pick dist-tag (prereleases go to `next`)
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          case "$version" in *-*) tag=next ;; *) tag=latest ;; esac
+          echo "DIST_TAG=$tag" >> "$GITHUB_ENV"
+
+      - name: Publish to npm (trusted publishing)
+        if: env.HAS_NPM_TOKEN == 'false'
+        run: npm publish --provenance --access public --tag "$DIST_TAG"
+
+      - name: Publish to npm (NPM_TOKEN secret)
+        if: env.HAS_NPM_TOKEN == 'true'
+        run: npm publish --provenance --access public --tag "$DIST_TAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: GitHub release
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes ${{ contains(github.ref_name, '-') && '--prerelease' || '' }}
         env:
           GH_TOKEN: ${{ github.token }}
