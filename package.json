@@ -19,7 +19,9 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --config vite.standalone.config.js"
+    "build": "vite build && vite build --config vite.standalone.config.js",
+    "build:site": "vite build --config vite.site.config.js",
+    "preview:site": "vite preview --config vite.site.config.js"
   },
   "keywords": [
     "three",
