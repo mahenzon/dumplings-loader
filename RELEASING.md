@@ -45,6 +45,32 @@ No token setup is needed for Pages or for GitHub releases: the workflows use the
    (Settings → Secrets and variables → Actions). The workflow uses it when present. Tokens expire
    (90 days max), trusted publishing does not.
 
+## First release (1.0.0)
+
+`package.json` is already at `1.0.0`; do not run `npm version`. Two ways:
+
+**A. Trusted publishing (recommended, no secrets).** Trusted publishing can only be configured for
+a package that already exists on npm, so the very first publish is manual:
+
+```bash
+npm login && npm publish --access public
+```
+
+Then configure the trusted publisher on npmjs.com (see above) and tag:
+
+```bash
+git tag -a v1.0.0 -m "v1.0.0" && git push origin master v1.0.0
+```
+
+The `Release` workflow sees that 1.0.0 is already on npm, skips the publish step and creates the
+GitHub release with generated notes. Every later release is fully automatic.
+
+**B. Token.** Store an npm granular access token as the `NPM_TOKEN` secret first, then just tag and
+push as above; the workflow publishes 1.0.0 itself.
+
+For later releases, move the `[Unreleased]` notes in `CHANGELOG.md` under a new version heading
+before running `npm version`.
+
 ## Every release
 
 1. Be on `master` with a clean tree and green CI.

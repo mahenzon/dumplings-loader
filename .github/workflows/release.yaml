@@ -47,12 +47,21 @@ jobs:
           case "$version" in *-*) tag=next ;; *) tag=latest ;; esac
           echo "DIST_TAG=$tag" >> "$GITHUB_ENV"
 
+      - name: Skip publish if this version is already on npm (manual first publish)
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if npm view "dumplings-loader@$version" version >/dev/null 2>&1; then
+            echo "already on npm: $version"; echo "ALREADY_PUBLISHED=true" >> "$GITHUB_ENV"
+          else
+            echo "ALREADY_PUBLISHED=false" >> "$GITHUB_ENV"
+          fi
+
       - name: Publish to npm (trusted publishing)
-        if: env.HAS_NPM_TOKEN == 'false'
+        if: env.HAS_NPM_TOKEN == 'false' && env.ALREADY_PUBLISHED == 'false'
         run: npm publish --provenance --access public --tag "$DIST_TAG"
 
       - name: Publish to npm (NPM_TOKEN secret)
-        if: env.HAS_NPM_TOKEN == 'true'
+        if: env.HAS_NPM_TOKEN == 'true' && env.ALREADY_PUBLISHED == 'false'
         run: npm publish --provenance --access public --tag "$DIST_TAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
