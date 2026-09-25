@@ -7,6 +7,7 @@ import {
   createSoftTexture,
   createWaterTexture,
 } from './toon.js';
+import STYLE from './loader.css?inline';
 
 export const DEFAULT_OPTIONS = Object.freeze({
   count: 7,
@@ -42,19 +43,6 @@ const POT_RADIUS = 4.4;
 const RING_RADIUS = 2.9;
 const DUMPLING_SCALE = 0.92;
 const FRAME_RADIUS = 5.4; // world units visible from the centre along the shorter canvas side
-
-const STYLE = `
-.dl-root{position:relative;display:flex;flex-direction:column;width:100%;height:100%;min-height:0;box-sizing:border-box;container-type:inline-size}
-.dl-stage{position:relative;flex:1 1 auto;min-height:0;width:100%;aspect-ratio:1;overflow:hidden}
-.dl-stage canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block}
-.dl-label{flex:0 0 auto;text-align:center;font:500 clamp(18px,7cqw,34px)/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:.01em;padding:.35em 0;user-select:none}
-.dl-label--top{order:-1}
-.dl-dots span{display:inline-block;width:.35em;animation:dl-dot 1.4s infinite ease-in-out}
-.dl-dots span:nth-child(2){animation-delay:.2s}
-.dl-dots span:nth-child(3){animation-delay:.4s}
-@keyframes dl-dot{0%,80%,100%{opacity:0}40%{opacity:1}}
-@media (prefers-reduced-motion:reduce){.dl-dots span{animation:none;opacity:1}}
-`;
 
 function mergeOptions(base, patch) {
   const out = { ...base, ...patch };
@@ -106,13 +94,17 @@ export function createDumplingsLoader(container, userOptions = {}) {
     labelText.textContent = text;
     label.style.color = colors.label;
     label.style.display = text && position !== 'none' ? '' : 'none';
-    label.classList.toggle('dl-label--top', position === 'top');
+    label.classList.toggle('dl-label-top', position === 'top');
   };
   applyLabel();
   container.appendChild(root);
 
   // ---------- Renderer / camera ----------
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({
+    alpha: true,
+    antialias: true,
+    powerPreference: 'high-performance',
+  });
   renderer.setPixelRatio(options.pixelRatio ?? Math.min(window.devicePixelRatio || 1, 2));
   renderer.setClearColor(0x000000, 0);
   renderer.toneMapping = THREE.NoToneMapping;
@@ -171,8 +163,13 @@ export function createDumplingsLoader(container, userOptions = {}) {
     track(new THREE.MeshStandardMaterial({ color, metalness: 0.35, roughness: 0.55, ...extra }));
 
   // Slanted wall: from above it reads as a shaded band between the rim and the water.
-  const wallGeometry = track(new THREE.CylinderGeometry(POT_RADIUS + 0.05, POT_RADIUS - 0.5, 2.4, 96, 1, true));
-  const wallInner = new THREE.Mesh(wallGeometry, steel(colors.potInside, { side: THREE.BackSide, roughness: 0.7 }));
+  const wallGeometry = track(
+    new THREE.CylinderGeometry(POT_RADIUS + 0.05, POT_RADIUS - 0.5, 2.4, 96, 1, true),
+  );
+  const wallInner = new THREE.Mesh(
+    wallGeometry,
+    steel(colors.potInside, { side: THREE.BackSide, roughness: 0.7 }),
+  );
   wallInner.position.y = -0.6;
   pot.add(wallInner);
   const wallOuter = new THREE.Mesh(wallGeometry, steel(colors.pot, { side: THREE.FrontSide }));
@@ -194,7 +191,10 @@ export function createDumplingsLoader(container, userOptions = {}) {
   handle.rotation.y = -handleAngle;
   handle.rotation.z = Math.PI / 2;
   handle.scale.set(1, 1, 0.6);
-  handle.position.copy(handleDir).multiplyScalar(POT_RADIUS + 1.7).setY(0.5);
+  handle.position
+    .copy(handleDir)
+    .multiplyScalar(POT_RADIUS + 1.7)
+    .setY(0.5);
   pot.add(withOutline(handle));
 
   const socketGeometry = track(new THREE.CylinderGeometry(0.42, 0.42, 0.6, 24));
@@ -203,7 +203,10 @@ export function createDumplingsLoader(container, userOptions = {}) {
   socket.rotation.y = -handleAngle;
   socket.rotation.z = Math.PI / 2;
   socket.scale.set(1, 1, 0.8);
-  socket.position.copy(handleDir).multiplyScalar(POT_RADIUS + 0.4).setY(0.5);
+  socket.position
+    .copy(handleDir)
+    .multiplyScalar(POT_RADIUS + 0.4)
+    .setY(0.5);
   pot.add(withOutline(socket));
 
   // ---------- Water ----------
@@ -232,7 +235,7 @@ export function createDumplingsLoader(container, userOptions = {}) {
     dumplings = [];
     const n = Math.max(1, Math.round(count));
     // Shrink pelmeni when the ring gets crowded (each one is ~2.2 units wide).
-    const scale = Math.min(DUMPLING_SCALE, ((Math.PI * 2 * RING_RADIUS) / n) / 2.4);
+    const scale = Math.min(DUMPLING_SCALE, (Math.PI * 2 * RING_RADIUS) / n / 2.4);
     for (let i = 0; i < n; i++) {
       const anchor = new THREE.Group();
       const tumbler = new THREE.Group();
@@ -283,7 +286,9 @@ export function createDumplingsLoader(container, userOptions = {}) {
   };
 
   const bubbles = options.bubbles ? makeSprites(track(createBubbleTexture()), 30, 0.8) : [];
-  const steam = options.steam ? makeSprites(track(createSoftTexture('#ffffff', { falloff: 1.3 })), 10, 0.5) : [];
+  const steam = options.steam
+    ? makeSprites(track(createSoftTexture('#ffffff', { falloff: 1.3 })), 10, 0.5)
+    : [];
 
   const spawnBubble = (b) => {
     const angle = Math.random() * Math.PI * 2;
@@ -318,7 +323,12 @@ export function createDumplingsLoader(container, userOptions = {}) {
   });
 
   const rippleMaterial = track(
-    new THREE.MeshBasicMaterial({ color: colors.waterHighlight, transparent: true, opacity: 0.3, depthWrite: false }),
+    new THREE.MeshBasicMaterial({
+      color: colors.waterHighlight,
+      transparent: true,
+      opacity: 0.3,
+      depthWrite: false,
+    }),
   );
   const rippleGeometry = track(new THREE.RingGeometry(0.9, 1, 48));
   const ripples = options.ripples

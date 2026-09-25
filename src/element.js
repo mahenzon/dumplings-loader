@@ -1,10 +1,5 @@
 import { createDumplingsLoader, DEFAULT_OPTIONS } from './loader.js';
-
-const HOST_STYLE = `
-:host{display:inline-block;width:320px;aspect-ratio:1;box-sizing:border-box;contain:layout style}
-:host([hidden]){display:none}
-.host{width:100%;height:100%}
-`;
+import HOST_STYLE from './element.css?inline';
 
 const CSS_COLOR_VARS = {
   dough: '--dumplings-dough',
@@ -73,7 +68,10 @@ export class DumplingsLoaderElement extends HTMLElement {
         break;
       case 'label':
       case 'label-position':
-        loader.setLabel(this.getAttribute('label') ?? DEFAULT_OPTIONS.label, this.getAttribute('label-position') || undefined);
+        loader.setLabel(
+          this.getAttribute('label') ?? DEFAULT_OPTIONS.label,
+          this.getAttribute('label-position') || undefined,
+        );
         break;
       case 'orbit-speed':
         loader.setSpeed({ orbit: num(value, DEFAULT_OPTIONS.orbitSpeed) });
