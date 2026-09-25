@@ -26,7 +26,9 @@ No token setup is needed for Pages or for GitHub releases: the workflows use the
 
 ### npm
 
-1. Have an npm account with 2FA enabled and log in locally: `npm login`.
+1. Have an npm account with 2FA enabled and log in locally: `npm login`. The repo `.npmrc` and
+   `publishConfig.registry` pin `registry.npmjs.org`, so a user-level mirror in `~/.npmrc` cannot
+   hijack login, install or publish.
 2. **First publish is manual** (trusted publishing can only be configured for a package that
    already exists on npm):
 
