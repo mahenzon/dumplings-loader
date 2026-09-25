@@ -57,6 +57,20 @@ import 'dumplings-loader'; // registers <dumplings-loader>
 
 ## Frameworks
 
+The custom element is the product; framework wrappers are optional sugar. Why only React gets one:
+
+- **React <= 18** has weak custom-element support: every prop becomes a string attribute, no
+  property setting, no custom events (React 19 fixed most of it). This element only takes
+  string / number / boolean attributes and emits no events, so the raw tag works even in React 18;
+  the wrapper adds camelCase typed props, a `ref` to the element and the `'use client'` boundary
+  for the Next.js App Router.
+- **Vue 3** resolves attributes and properties on custom elements natively; it only needs
+  `isCustomElement` so the template compiler stops warning. A wrapper would add nothing but types.
+- **Angular** documents `CUSTOM_ELEMENTS_SCHEMA` + `[attr.x]` bindings as the way to use custom
+  elements. A wrapper would be a compiled component depending on `@angular/core`, heavier than the
+  element itself.
+- **Svelte** needs zero configuration.
+
 ### React
 
 ```jsx
