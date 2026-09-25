@@ -26,10 +26,20 @@ const flag = (element, name, fallback) => {
   return !(value === 'false' || value === '0' || value === 'off');
 };
 
+// Numeric attribute that also works as a flag: bare / "true" / "on" → 1, "false" / "off" → 0.
+const level = (element, name, fallback) => {
+  if (!element.hasAttribute(name)) return fallback;
+  const value = element.getAttribute(name).trim();
+  if (value === '' || value === 'true' || value === 'on') return 1;
+  if (value === 'false' || value === 'off') return 0;
+  return Math.max(0, num(value, fallback));
+};
+
 /**
  * <dumplings-loader appearance="realistic" count="7" label="Loading" orbit-speed="0.35" tumble-speed="1.7"></dumplings-loader>
  * Size it with CSS (width / height or aspect-ratio). Colours via --dumplings-* custom properties.
  * `appearance` is `cartoon` (default) or `realistic`; changing it rebuilds the scene.
+ * `randomness` (0..1, bare attribute = 1) adds smooth random drift to the pelmeni; off by default.
  */
 // `extends HTMLElement` is evaluated at import time, which would throw during SSR (Next.js, Nuxt).
 const Base = typeof HTMLElement === 'undefined' ? class {} : HTMLElement;
@@ -44,6 +54,7 @@ export class DumplingsLoaderElement extends Base {
       'orbit-speed',
       'tumble-speed',
       'spin-axis',
+      'randomness',
       'paused',
     ];
   }
@@ -97,6 +108,9 @@ export class DumplingsLoaderElement extends Base {
       case 'spin-axis':
         loader.setSpinAxis(value || DEFAULT_OPTIONS.spinAxis);
         break;
+      case 'randomness':
+        loader.setRandomness(level(this, 'randomness', DEFAULT_OPTIONS.randomness));
+        break;
       case 'paused':
         if (flag(this, 'paused', false)) loader.pause();
         else loader.resume();
@@ -131,6 +145,7 @@ export class DumplingsLoaderElement extends Base {
       orbitSpeed: num(this.getAttribute('orbit-speed'), DEFAULT_OPTIONS.orbitSpeed),
       tumbleSpeed: num(this.getAttribute('tumble-speed'), DEFAULT_OPTIONS.tumbleSpeed),
       spinAxis: this.getAttribute('spin-axis') || DEFAULT_OPTIONS.spinAxis,
+      randomness: level(this, 'randomness', DEFAULT_OPTIONS.randomness),
       outline: flag(this, 'outline', DEFAULT_OPTIONS.outline),
       bubbles: flag(this, 'bubbles', DEFAULT_OPTIONS.bubbles),
       steam: flag(this, 'steam', DEFAULT_OPTIONS.steam),

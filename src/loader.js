@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { APPEARANCE_NAMES, getAppearance } from './appearances/index.js';
 import { DUMPLING_SCALE, FRAME_RADIUS, RING_RADIUS } from './constants.js';
 import { createOutlineMaterial } from './toon.js';
-import { randomIn } from './utils.js';
+import { createSmoothNoise, randomIn } from './utils.js';
 import STYLE from './loader.css?inline';
 
 export { APPEARANCE_NAMES };
@@ -14,6 +14,9 @@ export const DEFAULT_OPTIONS = Object.freeze({
   tumbleSpeed: 1.7, // rad/s, each pelmen flips over its tangent axis
   spinAxis: 'tangent', // 'tangent' | 'radial' | 'mixed'
   bob: 1, // vertical bobbing multiplier (visible through the contact shadow)
+  // 0..1: smooth random drift of each pelmen's slot, radius, tumble speed, tilt and yaw so the ring
+  // looks less mechanical. 0 = fully deterministic motion (the same on every mount).
+  randomness: 0,
   label: 'Loading',
   labelPosition: 'top', // 'top' | 'bottom' | 'none'
   outline: false, // soft ink outline around meshes (off by default: subtler look)
@@ -37,7 +40,7 @@ function mergeOptions(base, patch) {
 
 /**
  * Mounts the loader into `container`. Returns a handle with `setCount`, `setSpeed`,
- * `setSpinAxis`, `setLabel`, `pause`, `resume`, `destroy`.
+ * `setSpinAxis`, `setRandomness`, `setLabel`, `pause`, `resume`, `destroy`.
  */
 export function createDumplingsLoader(container, userOptions = {}) {
   if (!container) throw new Error('dumplings-loader: container element is required');
@@ -145,6 +148,9 @@ export function createDumplingsLoader(container, userOptions = {}) {
     const n = Math.max(1, Math.round(count));
     // Shrink pelmeni when the ring gets crowded (each one is ~2.2 units wide).
     const scale = Math.min(DUMPLING_SCALE, (Math.PI * 2 * RING_RADIUS) / n / 2.4);
+    // How far `randomness` may push a pelmen along the ring: a share of its slot, so neighbours
+    // on a crowded ring do not pile up.
+    const slotDrift = Math.min(0.12, ((Math.PI * 2) / n) * 0.12);
     for (let i = 0; i < n; i++) {
       const anchor = new THREE.Group();
       const tumbler = new THREE.Group();
@@ -169,6 +175,17 @@ export function createDumplingsLoader(container, userOptions = {}) {
         bobRate: randomIn(1.6, 2.3),
         wobblePhase: randomIn(0, Math.PI * 2),
         yaw: randomIn(-0.25, 0.25),
+        slotDrift,
+        // Independent smooth noise per channel, only advanced while `randomness` > 0.
+        noise: {
+          orbit: createSmoothNoise(randomIn(2.5, 4)),
+          radius: createSmoothNoise(randomIn(2, 3.5)),
+          tumble: createSmoothNoise(randomIn(1, 2)),
+          tilt: createSmoothNoise(randomIn(1.5, 2.5)),
+          yaw: createSmoothNoise(randomIn(3, 5)),
+          bob: createSmoothNoise(randomIn(2, 3)),
+        },
+        tumbleDrift: 0, // accumulated extra flip angle from the tumble-speed noise
       };
       if (options.shadows && appearance.shadow) {
         d.shadow = appearance.shadow.create(d);
@@ -291,6 +308,7 @@ export function createDumplingsLoader(container, userOptions = {}) {
   let lastTime = 0;
   let rafId = 0;
   let paused = Boolean(options.paused);
+  let randomness = 0; // eases towards options.randomness so live changes never snap
   let visible = true;
   let destroyed = false;
 
@@ -311,18 +329,36 @@ export function createDumplingsLoader(container, userOptions = {}) {
     const bobAmp = 0.14 * options.bob;
     const mix = axisMix();
 
+    const targetRandomness = Math.max(0, Number(options.randomness) || 0);
+    randomness += (targetRandomness - randomness) * Math.min(1, dt * 4);
+    if (targetRandomness === 0 && randomness < 1e-3) randomness = 0;
+    const jitter = randomness;
+
     dumplings.forEach((d) => {
-      const angle = d.baseAngle + options.orbitSpeed * t;
-      const radius = d.radius + Math.sin(t * 0.9 + d.wobblePhase) * 0.1;
-      const lift = Math.sin(t * d.bobRate + d.bobPhase) * bobAmp;
+      let angle = d.baseAngle + options.orbitSpeed * t;
+      let radius = d.radius + Math.sin(t * 0.9 + d.wobblePhase) * 0.1;
+      let bobScale = 1;
+      let tilt = 0;
+      let yaw = d.yaw;
+      if (jitter > 0) {
+        const n = d.noise;
+        angle += n.orbit(dt) * d.slotDrift * jitter;
+        radius += n.radius(dt) * 0.18 * jitter;
+        d.tumbleDrift += options.tumbleSpeed * d.tumbleRate * n.tumble(dt) * 0.4 * jitter * dt;
+        tilt = n.tilt(dt) * 0.14 * jitter;
+        yaw += n.yaw(dt) * 0.35 * jitter;
+        bobScale = 1 + n.bob(dt) * 0.5 * jitter;
+      }
+
+      const lift = Math.sin(t * d.bobRate + d.bobPhase) * bobAmp * bobScale;
       d.anchor.position.set(Math.cos(angle) * radius, lift + appearance.restHeight, Math.sin(angle) * radius);
       // Local +X points outwards from the pot centre, local +Z is the ring tangent.
       d.anchor.rotation.set(0, -angle, 0);
 
-      const spin = options.tumbleSpeed * d.tumbleRate * t + d.tumblePhase;
-      const wobble = Math.sin(t * 1.3 + d.wobblePhase) * 0.18;
+      const spin = options.tumbleSpeed * d.tumbleRate * t + d.tumblePhase + d.tumbleDrift;
+      const wobble = Math.sin(t * 1.3 + d.wobblePhase) * 0.18 + tilt;
       d.tumbler.rotation.set(spin * mix + wobble * (1 - mix), 0, -spin * (1 - mix) + wobble * mix);
-      d.mesh.rotation.y = d.yaw;
+      d.mesh.rotation.y = yaw;
 
       if (d.shadow) appearance.shadow.update(d, lift);
     });
@@ -449,6 +485,9 @@ export function createDumplingsLoader(container, userOptions = {}) {
     },
     setSpinAxis(spinAxis) {
       options = mergeOptions(options, { spinAxis });
+    },
+    setRandomness(level) {
+      options = mergeOptions(options, { randomness: Math.max(0, Number(level) || 0) });
     },
     setLabel(text, position) {
       options = mergeOptions(options, { label: text, ...(position ? { labelPosition: position } : {}) });

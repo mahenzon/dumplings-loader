@@ -15,6 +15,8 @@ export interface DumplingsLoaderProps {
   orbitSpeed?: number;
   tumbleSpeed?: number;
   spinAxis?: SpinAxis;
+  /** `0`..`1`; `true` means `1`. */
+  randomness?: number | boolean;
   paused?: boolean;
   outline?: boolean;
   bubbles?: boolean;

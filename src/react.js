@@ -10,6 +10,7 @@ const ATTRIBUTES = {
   orbitSpeed: 'orbit-speed',
   tumbleSpeed: 'tumble-speed',
   spinAxis: 'spin-axis',
+  randomness: 'randomness',
   paused: 'paused',
   outline: 'outline',
   bubbles: 'bubbles',

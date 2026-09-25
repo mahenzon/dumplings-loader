@@ -29,6 +29,11 @@ export interface DumplingsLoaderOptions {
   spinAxis?: SpinAxis;
   /** Vertical bobbing multiplier. */
   bob?: number;
+  /**
+   * `0` (default) to `1`: smooth random drift of each pelmen's slot, radius, tumble speed, tilt
+   * and yaw, so the ring looks less mechanical. `0` keeps the motion fully deterministic.
+   */
+  randomness?: number;
   /** Label text; empty string hides it. */
   label?: string;
   labelPosition?: LabelPosition;
@@ -62,6 +67,8 @@ export interface DumplingsLoaderHandle {
   setCount(count: number): void;
   setSpeed(speed: { orbit?: number; tumble?: number }): void;
   setSpinAxis(spinAxis: SpinAxis): void;
+  /** `0` (off) to `1`; eased in over a fraction of a second, so it can be toggled live. */
+  setRandomness(level: number): void;
   setLabel(text: string, position?: LabelPosition): void;
   pause(): void;
   resume(): void;
@@ -94,7 +101,8 @@ export function createDumplingGeometry(options?: DumplingGeometryOptions): Buffe
 
 /**
  * `<dumplings-loader>` custom element. Attributes: `appearance`, `count`, `label`, `label-position`,
- * `orbit-speed`, `tumble-speed`, `spin-axis`, `paused`, `outline`, `bubbles`, `steam`, `ripples`, `shadows`.
+ * `orbit-speed`, `tumble-speed`, `spin-axis`, `randomness`, `paused`, `outline`, `bubbles`, `steam`,
+ * `ripples`, `shadows`.
  */
 export class DumplingsLoaderElement extends HTMLElement {
   static get observedAttributes(): string[];
@@ -114,6 +122,8 @@ export interface DumplingsLoaderAttributes {
   'orbit-speed'?: number | string;
   'tumble-speed'?: number | string;
   'spin-axis'?: SpinAxis;
+  /** `0`..`1`; a bare attribute or `true` means `1`. */
+  randomness?: number | boolean | string;
   paused?: boolean | string;
   outline?: boolean | string;
   bubbles?: boolean | string;

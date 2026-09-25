@@ -11,9 +11,11 @@ import { DumplingsLoader } from 'dumplings-loader/react';
 const loader = createDumplingsLoader(document.body, {
   appearance: 'realistic',
   count: 5,
+  randomness: 0.5,
   colors: { water: '#ccc' },
 });
 loader.setSpeed({ orbit: 0.5 });
+loader.setRandomness(1);
 loader.setLabel('Cooking', 'bottom');
 const name: 'cartoon' | 'realistic' = loader.appearance;
 const defaults: number = DEFAULT_OPTIONS.count;
@@ -27,11 +29,12 @@ export function Spinner() {
         ref={ref}
         appearance="cartoon"
         count={7}
+        randomness
         paused
         style={{ width: 200 }}
         data-testid="x"
       />
-      <dumplings-loader appearance="realistic" count={3} label-position="none" />
+      <dumplings-loader appearance="realistic" count={3} label-position="none" randomness={0.3} />
       <button onClick={() => ref.current?.loader?.pause()}>{name + defaults + looks.length}</button>
     </>
   );
