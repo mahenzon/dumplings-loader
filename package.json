@@ -1,0 +1,45 @@
+{
+  "name": "dumplings-loader",
+  "version": "1.0.0",
+  "description": "Cartoon-style Three.js loading indicator: pelmeni tumbling in a boiling pot. Ships as a Web Component + plain JS API.",
+  "type": "module",
+  "main": "./dist/dumplings-loader.js",
+  "module": "./dist/dumplings-loader.js",
+  "exports": {
+    ".": {
+      "import": "./dist/dumplings-loader.js",
+      "default": "./dist/dumplings-loader.js"
+    },
+    "./standalone": "./dist/dumplings-loader.standalone.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && vite build --config vite.standalone.config.js"
+  },
+  "keywords": [
+    "three",
+    "threejs",
+    "loader",
+    "spinner",
+    "web-component",
+    "dumplings",
+    "pelmeni"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "three": ">=0.160.0"
+  },
+  "devDependencies": {
+    "three": "^0.186.0",
+    "vite": "^8.3.0"
+  },
+  "sideEffects": [
+    "./src/index.js",
+    "./dist/*.js"
+  ]
+}
