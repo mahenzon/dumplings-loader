@@ -43,6 +43,8 @@ jobs:
         run: cp -r dist site/dist
 
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true # turns Pages on (source: GitHub Actions) if the repo has not done it yet
 
       - uses: actions/upload-pages-artifact@v3
         with:

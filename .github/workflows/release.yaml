@@ -56,6 +56,13 @@ jobs:
             echo "ALREADY_PUBLISHED=false" >> "$GITHUB_ENV"
           fi
 
+      - name: GitHub release (idempotent, created before npm publish so a publish failure can be re-run)
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 && { echo "release exists"; exit 0; }
+          gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes ${{ contains(github.ref_name, '-') && '--prerelease' || '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Publish to npm (trusted publishing)
         if: env.HAS_NPM_TOKEN == 'false' && env.ALREADY_PUBLISHED == 'false'
         run: npm publish --provenance --access public --tag "$DIST_TAG"
@@ -65,8 +72,3 @@ jobs:
         run: npm publish --provenance --access public --tag "$DIST_TAG"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: GitHub release
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes ${{ contains(github.ref_name, '-') && '--prerelease' || '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
