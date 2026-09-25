@@ -50,7 +50,13 @@ export function createOutlineMaterial(color, thickness) {
 
 function rgba(hex, alpha) {
   const h = hex.replace('#', '');
-  const full = h.length === 3 ? h.split('').map((ch) => ch + ch).join('') : h;
+  const full =
+    h.length === 3
+      ? h
+          .split('')
+          .map((ch) => ch + ch)
+          .join('')
+      : h;
   const r = parseInt(full.slice(0, 2), 16);
   const g = parseInt(full.slice(2, 4), 16);
   const b = parseInt(full.slice(4, 6), 16);

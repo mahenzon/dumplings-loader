@@ -8,7 +8,8 @@ export default defineConfig({
       entry: 'src/index.js',
       name: 'DumplingsLoader',
       formats: ['es', 'iife'],
-      fileName: (format) => (format === 'es' ? 'dumplings-loader.standalone.js' : 'dumplings-loader.standalone.iife.js'),
+      fileName: (format) =>
+        format === 'es' ? 'dumplings-loader.standalone.js' : 'dumplings-loader.standalone.iife.js',
     },
     sourcemap: true,
   },
