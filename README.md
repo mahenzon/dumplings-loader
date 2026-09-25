@@ -138,6 +138,6 @@ npm run preview:site  # serve site/ locally
 
 ## Releasing to GitHub Pages
 
-`.github/workflows/pages.yml` builds the library and the demo site on every push to `master` and
+`.github/workflows/pages.yaml` builds the library and the demo site on every push to `master` and
 deploys `site/` (with `dist/` copied inside) to GitHub Pages. One-time setup in the repository:
 Settings → Pages → Source: **GitHub Actions**.
