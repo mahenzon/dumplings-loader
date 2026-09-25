@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { HANDLE_ANGLE, POT_RADIUS, RING_RADIUS } from '../constants.js';
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { FRAME_RADIUS, HANDLE_ANGLE, POT_RADIUS, RING_RADIUS } from '../constants.js';
 import { createDumplingGeometry } from '../dumpling-geometry.js';
 import { createBrothMaps, createDoughBumpMap, createNoiseNormalMap } from '../procedural.js';
 import { createRingBubbleTexture, createSoftTexture } from '../textures.js';
@@ -19,18 +20,79 @@ export const colors = Object.freeze({
   pot: '#d0d3d2', // stainless steel
   potInside: '#7c8184',
   handle: '#16171a',
-  shadow: '#4a4d4f',
+  shadow: '#15171a', // table shadow under the pot
   outline: '#8a7454',
   label: 'currentColor',
 });
 
-const RIM_Y = 0.8;
+const RIM_Y = 1;
 const FLOOR_Y = -1.8;
-const WALL_TOP_RADIUS = POT_RADIUS - 0.03;
-const WALL_BOTTOM_RADIUS = 3.6;
+const WALL_TOP_RADIUS = POT_RADIUS - 0.05;
+const WALL_BOTTOM_RADIUS = 3.45;
 // Wall radius at the water line (y = 0).
 const WATER_RADIUS =
   WALL_BOTTOM_RADIUS + (WALL_TOP_RADIUS - WALL_BOTTOM_RADIUS) * ((0 - FLOOR_Y) / (RIM_Y - FLOOR_Y));
+// Rolled lip: a flattened torus hanging over the wall top, ~0.7 wide seen from above.
+const RIM_TUBE = 0.34;
+const RIM_CENTRE_RADIUS = POT_RADIUS + 0.12;
+const RIM_OUTER_RADIUS = RIM_CENTRE_RADIUS + RIM_TUBE;
+// The handle starts under the lip; local +x of the handle group points away from the pot.
+const HANDLE_ROOT_RADIUS = POT_RADIUS + 0.35;
+const HANDLE_Y = 0.55;
+const HANDLE_PITCH = 0.1; // rad, the grip rises slightly away from the pot
+
+/**
+ * Phenolic saucepan grip seen from above: a rounded-rectangle bar that pinches into a waist behind
+ * the collar, widens towards a round tip and has a hanging hole. Built by extruding the top-view
+ * outline with a bevel (rounded edges), then smoothing the normals. Lies along +x, centred on y = 0;
+ * ~0.6 wide at the neck, ~0.78 at the tip, 0.7 thick.
+ */
+function createGripGeometry() {
+  const bevel = 0.2;
+  // Half-widths of the flat top face along the grip; the bevel adds `bevel` all around.
+  const edge = [
+    [0, 0.42],
+    [0.7, 0.38],
+    [1.6, 0.4],
+    [2.6, 0.48],
+    [3.4, 0.56],
+    [3.8, 0.58],
+  ];
+  const [tipX, tipRadius] = edge[edge.length - 1];
+  const shape = new THREE.Shape();
+  shape.moveTo(edge[0][0], -edge[0][1]);
+  shape.splineThru(edge.slice(1).map(([x, y]) => new THREE.Vector2(x, -y)));
+  shape.absarc(tipX, 0, tipRadius, -Math.PI / 2, Math.PI / 2, false);
+  shape.splineThru(
+    edge
+      .slice(0, -1)
+      .reverse()
+      .map(([x, y]) => new THREE.Vector2(x, y)),
+  );
+  shape.closePath();
+  const hole = new THREE.Path();
+  hole.absarc(tipX - 0.05, 0, 0.34, 0, Math.PI * 2, true);
+  shape.holes.push(hole);
+
+  const extruded = new THREE.ExtrudeGeometry(shape, {
+    depth: 0.3,
+    steps: 1,
+    curveSegments: 16,
+    bevelEnabled: true,
+    bevelThickness: 0.2,
+    bevelSize: bevel,
+    bevelSegments: 6,
+  });
+  // ExtrudeGeometry is flat-shaded (duplicated vertices); weld it and rebuild smooth normals.
+  extruded.deleteAttribute('uv');
+  extruded.deleteAttribute('normal');
+  const geometry = mergeVertices(extruded, 1e-4);
+  extruded.dispose();
+  geometry.computeVertexNormals();
+  geometry.rotateX(-Math.PI / 2); // extrusion axis → +y
+  geometry.translate(0, -(0.3 / 2), 0);
+  return geometry;
+}
 
 // Scrolls two copies of the tileable normal map in different directions so the broth surface shimmers.
 const WATER_NORMAL_CHUNK = /* glsl */ `
@@ -81,8 +143,8 @@ export function create({ scene, renderer, colors: c, options, track }) {
   key.position.set(-6, 12, -5);
   if (options.shadows) {
     key.castShadow = true;
-    key.shadow.mapSize.set(1024, 1024);
-    const extent = POT_RADIUS + 1;
+    key.shadow.mapSize.set(1536, 1536);
+    const extent = FRAME_RADIUS + 1.6;
     Object.assign(key.shadow.camera, {
       left: -extent,
       right: extent,
@@ -114,74 +176,113 @@ export function create({ scene, renderer, colors: c, options, track }) {
         ...extra,
       }),
     );
+  const shaded = (mesh) => {
+    mesh.castShadow = Boolean(options.shadows);
+    mesh.receiveShadow = true;
+    return mesh;
+  };
 
+  // Inner wall: open cone, seen from inside. Casts too, so the near wall shades the water and the
+  // whole pot shades the table (DoubleSide: a single-sided surface would drop out of the shadow map).
   const wallGeometry = track(
     new THREE.CylinderGeometry(WALL_TOP_RADIUS, WALL_BOTTOM_RADIUS, RIM_Y - FLOOR_Y, 128, 1, true),
   );
-  const wallInner = new THREE.Mesh(
-    wallGeometry,
-    steel(c.potInside, { side: THREE.BackSide, roughness: 0.42, envMapIntensity: 0.8 }),
+  const wallInner = shaded(
+    new THREE.Mesh(
+      wallGeometry,
+      steel(c.potInside, {
+        side: THREE.BackSide,
+        shadowSide: THREE.DoubleSide,
+        roughness: 0.42,
+        envMapIntensity: 0.8,
+      }),
+    ),
   );
   wallInner.position.y = (RIM_Y + FLOOR_Y) / 2;
-  wallInner.receiveShadow = true;
   pot.add(wallInner);
 
   const floorGeometry = track(new THREE.CircleGeometry(WALL_BOTTOM_RADIUS, 96));
-  const floor = new THREE.Mesh(
-    floorGeometry,
-    steel('#3e4245', { roughness: 0.6, anisotropy: 0.2, envMapIntensity: 0.4 }),
+  const floor = shaded(
+    new THREE.Mesh(
+      floorGeometry,
+      steel('#3e4245', {
+        shadowSide: THREE.DoubleSide,
+        roughness: 0.6,
+        anisotropy: 0.2,
+        envMapIntensity: 0.4,
+      }),
+    ),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = FLOOR_Y;
   pot.add(floor);
 
-  // Rolled rim.
-  const rimGeometry = track(new THREE.TorusGeometry(POT_RADIUS + 0.08, 0.27, 32, 192));
-  const rim = new THREE.Mesh(rimGeometry, steel(c.pot, { roughness: 0.2 }));
+  // Rolled lip: flattened torus overhanging the wall top; reads as a wide bright band from above.
+  const rimGeometry = track(new THREE.TorusGeometry(RIM_CENTRE_RADIUS, RIM_TUBE, 48, 256));
+  const rim = shaded(new THREE.Mesh(rimGeometry, steel(c.pot, { roughness: 0.2 })));
   rim.rotation.x = Math.PI / 2;
-  rim.scale.z = 0.55; // flattened rolled edge: reads as a wide bright band from above
+  rim.scale.z = 0.5;
   rim.position.y = RIM_Y;
   pot.add(rim);
 
-  // Handle: black phenolic grip on a steel ferrule, towards the bottom-right like in the reference.
-  const handleDir = new THREE.Vector3(Math.cos(HANDLE_ANGLE), 0, Math.sin(HANDLE_ANGLE));
-  const orient = (mesh) => {
-    mesh.rotation.order = 'YXZ';
-    mesh.rotation.y = -HANDLE_ANGLE;
-    mesh.rotation.z = Math.PI / 2;
-  };
-  const handleGeometry = track(new THREE.CapsuleGeometry(0.34, 2.9, 12, 32));
-  const handle = new THREE.Mesh(
-    handleGeometry,
-    track(
-      new THREE.MeshPhysicalMaterial({
-        color: c.handle,
-        metalness: 0,
-        roughness: 0.42,
-        clearcoat: 0.35,
-        clearcoatRoughness: 0.35,
-        envMapIntensity: 0.8,
-      }),
-    ),
+  // Handle: black phenolic grip behind a flared steel collar, towards the bottom-right like in the
+  // reference. The group's local +x runs along the handle, away from the pot.
+  const handle = new THREE.Group();
+  handle.rotation.y = -HANDLE_ANGLE;
+  handle.position.set(
+    Math.cos(HANDLE_ANGLE) * HANDLE_ROOT_RADIUS,
+    HANDLE_Y,
+    Math.sin(HANDLE_ANGLE) * HANDLE_ROOT_RADIUS,
   );
-  orient(handle);
-  handle.scale.set(1, 1, 0.62);
-  handle.position
-    .copy(handleDir)
-    .multiplyScalar(POT_RADIUS + 1.85)
-    .setY(0.55);
-  handle.castShadow = Boolean(options.shadows);
   pot.add(handle);
 
-  const ferruleGeometry = track(new THREE.CylinderGeometry(0.4, 0.4, 0.8, 32));
-  const ferrule = new THREE.Mesh(ferruleGeometry, steel(c.pot, { roughness: 0.3 }));
-  orient(ferrule);
-  ferrule.scale.set(1, 1, 0.8);
-  ferrule.position
-    .copy(handleDir)
-    .multiplyScalar(POT_RADIUS + 0.5)
-    .setY(0.55);
-  pot.add(ferrule);
+  const collarGeometry = track(new THREE.CylinderGeometry(0.36, 0.4, 0.5, 48));
+  collarGeometry.rotateZ(-Math.PI / 2); // axis along +x, the wider end towards the pot
+  const collar = shaded(
+    new THREE.Mesh(collarGeometry, steel(c.pot, { roughness: 0.38, envMapIntensity: 0.7 })),
+  );
+  collar.scale.set(1, 1, 1.15);
+  collar.position.x = 0.25;
+  handle.add(collar);
+
+  const gripGeometry = track(createGripGeometry());
+  const gripMaterial = track(
+    new THREE.MeshPhysicalMaterial({
+      color: c.handle,
+      metalness: 0,
+      roughness: 0.5,
+      clearcoat: 0.5,
+      clearcoatRoughness: 0.22,
+      envMapIntensity: 0.45,
+    }),
+  );
+  const grip = shaded(new THREE.Mesh(gripGeometry, gripMaterial));
+  grip.position.x = 0.45; // neck sits inside the collar
+  grip.rotation.z = HANDLE_PITCH;
+  handle.add(grip);
+
+  // Table: catches the pot's and the handle's shadow, fades out before the canvas edge so the
+  // shadow never ends in a hard line at the frame boundary.
+  if (options.shadows) {
+    const groundMaterial = track(new THREE.ShadowMaterial({ color: c.shadow, opacity: 0.32 }));
+    groundMaterial.onBeforeCompile = (shader) => {
+      shader.uniforms.uFade = { value: new THREE.Vector2(RIM_OUTER_RADIUS - 0.05, FRAME_RADIUS - 0.05) };
+      shader.vertexShader = `varying vec3 vDlWorld;\n${shader.vertexShader.replace(
+        '#include <worldpos_vertex>',
+        '#include <worldpos_vertex>\n  vDlWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+      )}`;
+      shader.fragmentShader = `varying vec3 vDlWorld;\nuniform vec2 uFade;\n${shader.fragmentShader.replace(
+        'opacity * ( 1.0 - getShadowMask() )',
+        'opacity * ( 1.0 - getShadowMask() ) * (1.0 - smoothstep(uFade.x, uFade.y, length(vDlWorld.xz)))',
+      )}`;
+    };
+    const groundGeometry = track(new THREE.PlaneGeometry(FRAME_RADIUS * 6, FRAME_RADIUS * 6));
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = FLOOR_Y - 0.1;
+    ground.receiveShadow = true;
+    scene.add(ground);
+  }
 
   // ---------- Water ----------
   const { colorMap, alphaMap } = createBrothMaps(c.water, c.waterEdge, {
