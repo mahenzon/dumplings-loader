@@ -11,6 +11,6 @@ export default defineConfig({
       fileName: (format) =>
         format === 'es' ? 'dumplings-loader.standalone.js' : 'dumplings-loader.standalone.iife.js',
     },
-    sourcemap: true,
+    sourcemap: false, // keeps the npm tarball small; the lib build ships maps
   },
 });

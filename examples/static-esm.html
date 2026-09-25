@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>dumplings-loader – static page via ES modules</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #1d1b22;
+        color: #f3eee6;
+        font-family: system-ui, sans-serif;
+      }
+
+      dumplings-loader {
+        width: min(80vw, 360px);
+      }
+    </style>
+    <!-- Share one copy of Three.js with the rest of your page via an import map. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/",
+          "dumplings-loader": "https://cdn.jsdelivr.net/npm/dumplings-loader/dist/dumplings-loader.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <dumplings-loader count="6" label="Loading" label-position="bottom"></dumplings-loader>
+
+    <script type="module">
+      import { createDumplingsLoader } from 'dumplings-loader';
+
+      // The tag above registers itself on import; the JS API is available too:
+      const mount = document.createElement('div');
+      mount.style.width = '120px';
+      document.body.appendChild(mount);
+      createDumplingsLoader(mount, { appearance: 'realistic', count: 4, label: '' });
+    </script>
+  </body>
+</html>

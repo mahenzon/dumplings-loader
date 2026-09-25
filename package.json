@@ -1,33 +1,60 @@
 {
   "name": "dumplings-loader",
   "version": "1.0.0",
-  "description": "Cartoon-style Three.js loading indicator: pelmeni tumbling in a boiling pot. Ships as a Web Component + plain JS API.",
+  "description": "Three.js loading indicator: pelmeni tumbling in a boiling pot, cartoon or realistic look. Ships as a Web Component + plain JS API.",
   "type": "module",
   "main": "./dist/dumplings-loader.js",
   "module": "./dist/dumplings-loader.js",
+  "types": "./types/index.d.ts",
+  "unpkg": "./dist/dumplings-loader.standalone.iife.js",
+  "jsdelivr": "./dist/dumplings-loader.standalone.iife.js",
   "exports": {
     ".": {
-      "import": "./dist/dumplings-loader.js",
+      "types": "./types/index.d.ts",
       "default": "./dist/dumplings-loader.js"
     },
-    "./standalone": "./dist/dumplings-loader.standalone.js"
+    "./react": {
+      "types": "./types/react.d.ts",
+      "default": "./dist/dumplings-loader.react.js"
+    },
+    "./standalone": {
+      "types": "./types/index.d.ts",
+      "default": "./dist/dumplings-loader.standalone.js"
+    },
+    "./standalone-iife": "./dist/dumplings-loader.standalone.iife.js",
+    "./jsx": {
+      "types": "./types/jsx.d.ts"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
     "src",
-    "README.md"
+    "types",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "./src/index.js",
+    "./dist/dumplings-loader.js",
+    "./dist/dumplings-loader.standalone.js",
+    "./dist/dumplings-loader.standalone.iife.js"
   ],
   "scripts": {
     "dev": "vite",
     "build": "vite build && vite build --config vite.standalone.config.js",
     "build:site": "vite build --config vite.site.config.js",
     "preview:site": "vite preview --config vite.site.config.js",
-    "lint": "npm run lint:js && npm run lint:css && npm run lint:html && npm run format:check",
+    "lint": "npm run lint:js && npm run lint:css && npm run lint:html && npm run lint:types && npm run format:check",
     "lint:js": "eslint .",
     "lint:css": "stylelint \"src/**/*.css\" \"**/*.html\"",
     "lint:html": "html-validate index.html examples/*.html",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "lint:types": "tsc -p scripts/tsconfig.types.json",
+    "capture": "node scripts/capture-server.mjs",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run lint"
   },
   "keywords": [
     "three",
@@ -36,26 +63,47 @@
     "spinner",
     "web-component",
     "dumplings",
-    "pelmeni"
+    "pelmeni",
+    "realistic"
   ],
   "license": "MIT",
+  "author": "Suren Khorenyan",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mahenzon/dumplings-loader.git"
+  },
+  "homepage": "https://mahenzon.github.io/dumplings-loader/",
+  "bugs": {
+    "url": "https://github.com/mahenzon/dumplings-loader/issues"
+  },
   "peerDependencies": {
-    "three": ">=0.160.0"
+    "three": ">=0.160.0",
+    "react": ">=17"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/react": "^19.3.0",
+    "@types/three": "^0.185.4",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
     "html-validate": "^11.15.0",
     "postcss-html": "^2.0.0",
     "prettier": "^3.9.6",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "stylelint": "^17.15.0",
     "stylelint-config-standard": "^40.0.0",
     "three": "^0.186.0",
+    "typescript": "^7.0.2",
     "vite": "^8.3.0"
   },
-  "sideEffects": [
-    "./src/index.js",
-    "./dist/*.js"
-  ]
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
 }

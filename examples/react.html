@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>dumplings-loader – React wrapper smoke test</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #fff8ee;
+        font-family: system-ui, sans-serif;
+      }
+
+      .row {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Dev-only: run `npm run dev` and open /examples/react.html. Uses ../src/react.js directly. -->
+    <script type="module">
+      import { createElement as h, useRef, useState } from 'react';
+      import { createRoot } from 'react-dom/client';
+      import { DumplingsLoader } from '../src/react.js';
+
+      function App() {
+        const [count, setCount] = useState(6);
+        const [paused, setPaused] = useState(false);
+        const [appearance, setAppearance] = useState('realistic');
+        const ref = useRef(null);
+        return h(
+          'div',
+          null,
+          h(DumplingsLoader, { ref, appearance, count, paused, label: 'React', style: { width: 300 } }),
+          h(
+            'div',
+            { className: 'row' },
+            h('button', { onClick: () => setCount((c) => c + 1) }, `count ${count} +`),
+            h('button', { onClick: () => setPaused((p) => !p) }, paused ? 'resume' : 'pause'),
+            h(
+              'button',
+              { onClick: () => setAppearance((a) => (a === 'cartoon' ? 'realistic' : 'cartoon')) },
+              `look: ${appearance}`,
+            ),
+            h('button', { onClick: () => ref.current?.loader?.setLabel('via ref') }, 'ref → setLabel'),
+          ),
+        );
+      }
+
+      createRoot(document.getElementById('root')).render(h(App));
+    </script>
+  </body>
+</html>
