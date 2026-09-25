@@ -21,7 +21,13 @@
     "dev": "vite",
     "build": "vite build && vite build --config vite.standalone.config.js",
     "build:site": "vite build --config vite.site.config.js",
-    "preview:site": "vite preview --config vite.site.config.js"
+    "preview:site": "vite preview --config vite.site.config.js",
+    "lint": "npm run lint:js && npm run lint:css && npm run lint:html && npm run format:check",
+    "lint:js": "eslint .",
+    "lint:css": "stylelint \"src/**/*.css\" \"**/*.html\"",
+    "lint:html": "html-validate index.html examples/*.html",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [
     "three",
@@ -37,6 +43,14 @@
     "three": ">=0.160.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "globals": "^17.12.0",
+    "html-validate": "^11.15.0",
+    "postcss-html": "^2.0.0",
+    "prettier": "^3.9.6",
+    "stylelint": "^17.15.0",
+    "stylelint-config-standard": "^40.0.0",
     "three": "^0.186.0",
     "vite": "^8.3.0"
   },
