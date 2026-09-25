@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>standalone iife test</title>
+    <style>
+      body { margin: 0; background: #223; color: #fff; display: grid; place-items: center; min-height: 100vh; }
+      dumplings-loader { width: 300px; }
+    </style>
+  </head>
+  <body>
+    <dumplings-loader count="6" label="Loading" label-position="bottom"></dumplings-loader>
+    <script src="../dist/dumplings-loader.standalone.iife.js"></script>
+    <script>
+      console.log('global API keys:', Object.keys(window.DumplingsLoader || {}).join(','));
+    </script>
+  </body>
+</html>

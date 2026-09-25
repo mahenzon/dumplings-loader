@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>dumplings-loader demo</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: system-ui, sans-serif;
+        background: #fff8ee;
+        color: #2e2a33;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background: #1d1b22; color: #f3eee6; }
+      }
+      main { display: grid; gap: 24px; justify-items: center; padding: 24px; }
+      dumplings-loader { width: min(80vw, 420px); }
+      .controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; font-size: 14px; }
+      .controls label { display: flex; gap: 8px; align-items: center; }
+      .swatches { display: flex; gap: 12px; }
+      .tiny { width: 120px; --dumplings-water: #f3dde2; --dumplings-water-edge: #d8b9c2; --dumplings-pot: #e6dbe9; --dumplings-pot-inside: #a58fae; }
+      .tiny::part(label) { display: none; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <dumplings-loader id="main" count="7" label="Loading"></dumplings-loader>
+
+      <div class="controls">
+        <label>count <input id="count" type="range" min="1" max="14" value="7" /> <output id="countOut">7</output></label>
+        <label>orbit <input id="orbit" type="range" min="-1.5" max="1.5" step="0.05" value="0.35" /></label>
+        <label>tumble <input id="tumble" type="range" min="0" max="5" step="0.1" value="1.7" /></label>
+        <label>axis
+          <select id="axis">
+            <option value="tangent">tangent</option>
+            <option value="radial">radial</option>
+            <option value="mixed">mixed</option>
+          </select>
+        </label>
+        <label><input id="paused" type="checkbox" /> paused</label>
+      </div>
+
+      <div class="swatches">
+        <dumplings-loader class="tiny" count="5" label="" tumble-speed="2.4"></dumplings-loader>
+        <dumplings-loader class="tiny" count="3" label="" spin-axis="radial" style="--dumplings-water:#dcefe3;--dumplings-water-edge:#b5d3c0;--dumplings-pot:#e9e0c4;--dumplings-pot-inside:#b3a26f"></dumplings-loader>
+      </div>
+    </main>
+
+    <script type="module">
+      import './src/index.js';
+      const el = document.getElementById('main');
+      const bind = (id, fn) => document.getElementById(id).addEventListener('input', (e) => fn(e.target));
+      bind('count', (i) => { el.setAttribute('count', i.value); document.getElementById('countOut').value = i.value; });
+      bind('orbit', (i) => el.setAttribute('orbit-speed', i.value));
+      bind('tumble', (i) => el.setAttribute('tumble-speed', i.value));
+      bind('axis', (i) => el.setAttribute('spin-axis', i.value));
+      bind('paused', (i) => (i.checked ? el.setAttribute('paused', '') : el.removeAttribute('paused')));
+    </script>
+  </body>
+</html>
