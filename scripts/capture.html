@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>README image capture</title>
+    <style>
+      body {
+        margin: 0;
+        background: #fff8ee;
+        font-family: system-ui, sans-serif;
+      }
+
+      #stage {
+        display: flex;
+        gap: 40px;
+        padding: 20px;
+      }
+
+      dumplings-loader {
+        width: 360px;
+      }
+
+      #out {
+        display: block;
+        width: 880px;
+        margin: 20px;
+        outline: 1px solid #ccc;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="stage">
+      <dumplings-loader appearance="cartoon" label-position="none"></dumplings-loader>
+      <dumplings-loader appearance="realistic" label-position="none"></dumplings-loader>
+    </div>
+    <canvas id="out"></canvas>
+    <pre id="log"></pre>
+    <script type="module">
+      // Deterministic frame: requestAnimationFrame is replaced by a manual scheduler, the loaders
+      // are stepped a fixed number of times, then both canvases are composed into one image.
+      const params = new URLSearchParams(location.search);
+      const port = params.get('port') || '5180';
+      const scale = Number(params.get('scale') || 1.6); // output = 880 * scale px wide
+      const quality = Number(params.get('quality') || 0.8);
+      const warmup = Number(params.get('warmup') || 90); // frames at 30 fps before the shot
+
+      const queue = [];
+      window.requestAnimationFrame = (cb) => queue.push(cb);
+      window.cancelAnimationFrame = () => {};
+      Object.defineProperty(document, 'hidden', { get: () => false });
+      Object.defineProperty(document, 'visibilityState', { get: () => 'visible' });
+      window.IntersectionObserver = class {
+        observe() {}
+        disconnect() {}
+      };
+
+      await import('../src/index.js');
+      const loaders = [...document.querySelectorAll('dumplings-loader')];
+      const out = document.getElementById('out');
+      out.width = Math.round(880 * scale);
+      out.height = Math.round(470 * scale);
+      const ctx = out.getContext('2d');
+      ctx.scale(scale, scale);
+      const log = (m) => (document.getElementById('log').textContent += `${m}\n`);
+
+      const compose = () => {
+        ctx.fillStyle = '#fff8ee';
+        ctx.fillRect(0, 0, 880, 470);
+        ctx.fillStyle = '#2e2a33';
+        ctx.textAlign = 'center';
+        loaders.forEach((el, i) => {
+          const x = 40 + i * 400;
+          ctx.drawImage(el.loader.canvas, x, 60, 400, 400);
+          ctx.font = '500 30px system-ui, sans-serif';
+          ctx.fillText('Loading...', x + 200, 44);
+          ctx.font = '16px ui-monospace, SFMono-Regular, Menlo, monospace';
+          ctx.fillText(`appearance="${el.getAttribute('appearance')}"`, x + 200, 460);
+        });
+      };
+
+      const toBlob = (type, q) => new Promise((resolve) => out.toBlob(resolve, type, q));
+      const post = (name, blob, last) =>
+        fetch(`http://localhost:${port}/image?name=${name}&last=${last ? 1 : 0}`, {
+          method: 'POST',
+          body: blob,
+        });
+
+      await new Promise((r) => setTimeout(r, 300));
+      let time = 0;
+      for (let i = 0; i < warmup; i++) {
+        time += 1000 / 30;
+        queue.splice(0).forEach((cb) => cb(time));
+      }
+      compose();
+      log(await (await post('demo.webp', await toBlob('image/webp', quality), true)).text());
+      document.title = 'capture done';
+    </script>
+  </body>
+</html>
