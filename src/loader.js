@@ -1,15 +1,14 @@
 import * as THREE from 'three';
-import { createDumplingGeometry } from './dumpling-geometry.js';
-import {
-  createBubbleTexture,
-  createGradientMap,
-  createOutlineMaterial,
-  createSoftTexture,
-  createWaterTexture,
-} from './toon.js';
+import { APPEARANCE_NAMES, getAppearance } from './appearances/index.js';
+import { DUMPLING_SCALE, FRAME_RADIUS, RING_RADIUS } from './constants.js';
+import { createOutlineMaterial } from './toon.js';
+import { randomIn } from './utils.js';
 import STYLE from './loader.css?inline';
 
+export { APPEARANCE_NAMES };
+
 export const DEFAULT_OPTIONS = Object.freeze({
+  appearance: 'cartoon', // 'cartoon' | 'realistic' (read once on mount)
   count: 7,
   orbitSpeed: 0.35, // rad/s, whole ring drifts around the pot
   tumbleSpeed: 1.7, // rad/s, each pelmen flips over its tangent axis
@@ -24,34 +23,16 @@ export const DEFAULT_OPTIONS = Object.freeze({
   shadows: true,
   paused: false,
   reducedMotion: 'auto', // 'auto' | true | false
-  pixelRatio: null, // null → min(devicePixelRatio, 2)
-  colors: Object.freeze({
-    dough: '#f2e3c3',
-    water: '#dbe8ee',
-    waterEdge: '#b6c8d3',
-    waterHighlight: '#ffffff',
-    pot: '#c9ced4',
-    potInside: '#8d949c',
-    handle: '#2b2e33',
-    shadow: '#3d4a55',
-    outline: '#8a7454',
-    label: 'currentColor',
-  }),
+  pixelRatio: null, // null → min(devicePixelRatio, 2), scaled down a little by the realistic appearance
+  // Palette of the default (cartoon) appearance. Each appearance ships its own defaults;
+  // anything you pass in `colors` overrides them.
+  colors: getAppearance('cartoon').colors,
 });
-
-const POT_RADIUS = 4.4;
-const RING_RADIUS = 2.9;
-const DUMPLING_SCALE = 0.92;
-const FRAME_RADIUS = 5.4; // world units visible from the centre along the shorter canvas side
 
 function mergeOptions(base, patch) {
   const out = { ...base, ...patch };
   out.colors = { ...base.colors, ...(patch?.colors || {}) };
   return out;
-}
-
-function randomIn(min, max) {
-  return min + Math.random() * (max - min);
 }
 
 /**
@@ -60,12 +41,14 @@ function randomIn(min, max) {
  */
 export function createDumplingsLoader(container, userOptions = {}) {
   if (!container) throw new Error('dumplings-loader: container element is required');
-  let options = mergeOptions(DEFAULT_OPTIONS, userOptions);
+  const appearanceModule = getAppearance(userOptions.appearance ?? DEFAULT_OPTIONS.appearance);
+  let options = mergeOptions({ ...DEFAULT_OPTIONS, colors: appearanceModule.colors }, userOptions);
   const colors = options.colors;
 
   // ---------- DOM ----------
   const root = document.createElement('div');
   root.className = 'dl-root';
+  root.dataset.appearance = appearanceModule.name;
   const style = document.createElement('style');
   style.textContent = STYLE;
   root.appendChild(style);
@@ -105,9 +88,10 @@ export function createDumplingsLoader(container, userOptions = {}) {
     antialias: true,
     powerPreference: 'high-performance',
   });
-  renderer.setPixelRatio(options.pixelRatio ?? Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(
+    options.pixelRatio ?? Math.min(window.devicePixelRatio || 1, 2) * (appearanceModule.pixelRatioScale ?? 1),
+  );
   renderer.setClearColor(0x000000, 0);
-  renderer.toneMapping = THREE.NoToneMapping;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   stage.appendChild(renderer.domElement);
 
@@ -129,18 +113,7 @@ export function createDumplingsLoader(container, userOptions = {}) {
     camera.updateProjectionMatrix();
   };
 
-  // ---------- Lights (key from the top-left of the screen) ----------
-  scene.add(new THREE.HemisphereLight(0xffffff, 0xbfb4a4, 0.9));
-  scene.add(new THREE.AmbientLight(0xffffff, 0.25));
-  const key = new THREE.DirectionalLight(0xfff5e6, 2.4);
-  key.position.set(-6, 10, -5);
-  scene.add(key);
-  const fill = new THREE.DirectionalLight(0xdbe9ff, 0.6);
-  fill.position.set(6, 6, 5);
-  scene.add(fill);
-
-  const gradientMap = createGradientMap();
-  const disposables = [gradientMap];
+  const disposables = [];
   const track = (resource) => {
     disposables.push(resource);
     return resource;
@@ -155,74 +128,10 @@ export function createDumplingsLoader(container, userOptions = {}) {
     return mesh;
   };
 
-  // ---------- Pot ----------
-  const pot = new THREE.Group();
-  scene.add(pot);
-
-  const steel = (color, extra = {}) =>
-    track(new THREE.MeshStandardMaterial({ color, metalness: 0.35, roughness: 0.55, ...extra }));
-
-  // Slanted wall: from above it reads as a shaded band between the rim and the water.
-  const wallGeometry = track(
-    new THREE.CylinderGeometry(POT_RADIUS + 0.05, POT_RADIUS - 0.5, 2.4, 96, 1, true),
-  );
-  const wallInner = new THREE.Mesh(
-    wallGeometry,
-    steel(colors.potInside, { side: THREE.BackSide, roughness: 0.7 }),
-  );
-  wallInner.position.y = -0.6;
-  pot.add(wallInner);
-  const wallOuter = new THREE.Mesh(wallGeometry, steel(colors.pot, { side: THREE.FrontSide }));
-  wallOuter.position.y = -0.6;
-  pot.add(withOutline(wallOuter));
-
-  const rimGeometry = track(new THREE.TorusGeometry(POT_RADIUS + 0.05, 0.24, 24, 128));
-  const rimMesh = new THREE.Mesh(rimGeometry, steel(colors.pot, { roughness: 0.4 }));
-  rimMesh.rotation.x = Math.PI / 2;
-  rimMesh.position.y = 0.6;
-  pot.add(withOutline(rimMesh));
-
-  // Handle towards the bottom-right of the screen, like in the reference.
-  const handleAngle = Math.PI / 5;
-  const handleDir = new THREE.Vector3(Math.cos(handleAngle), 0, Math.sin(handleAngle));
-  const handleGeometry = track(new THREE.CapsuleGeometry(0.36, 2.8, 8, 24));
-  const handle = new THREE.Mesh(handleGeometry, steel(colors.handle, { metalness: 0.1, roughness: 0.75 }));
-  handle.rotation.order = 'YXZ';
-  handle.rotation.y = -handleAngle;
-  handle.rotation.z = Math.PI / 2;
-  handle.scale.set(1, 1, 0.6);
-  handle.position
-    .copy(handleDir)
-    .multiplyScalar(POT_RADIUS + 1.7)
-    .setY(0.5);
-  pot.add(withOutline(handle));
-
-  const socketGeometry = track(new THREE.CylinderGeometry(0.42, 0.42, 0.6, 24));
-  const socket = new THREE.Mesh(socketGeometry, steel(colors.pot));
-  socket.rotation.order = 'YXZ';
-  socket.rotation.y = -handleAngle;
-  socket.rotation.z = Math.PI / 2;
-  socket.scale.set(1, 1, 0.8);
-  socket.position
-    .copy(handleDir)
-    .multiplyScalar(POT_RADIUS + 0.4)
-    .setY(0.5);
-  pot.add(withOutline(socket));
-
-  // ---------- Water ----------
-  const waterTexture = track(createWaterTexture(colors.water, colors.waterEdge, colors.waterHighlight));
-  const waterGeometry = track(new THREE.CircleGeometry(POT_RADIUS - 0.02, 128));
-  const water = new THREE.Mesh(waterGeometry, track(new THREE.MeshBasicMaterial({ map: waterTexture })));
-  water.rotation.x = -Math.PI / 2;
-  pot.add(water);
+  // ---------- Appearance: lights, pot, water, materials, particle tuning ----------
+  const appearance = appearanceModule.create({ scene, renderer, colors, options, track, withOutline });
 
   // ---------- Dumplings ----------
-  const dumplingGeometry = track(createDumplingGeometry());
-  const doughMaterial = track(new THREE.MeshToonMaterial({ color: colors.dough, gradientMap }));
-  const shadowTexture = track(createSoftTexture(colors.shadow, { falloff: 1.6 }));
-  const shadowMaterial = track(
-    new THREE.SpriteMaterial({ map: shadowTexture, transparent: true, depthWrite: false, opacity: 0.28 }),
-  );
   const dumplingsGroup = new THREE.Group();
   scene.add(dumplingsGroup);
   let dumplings = [];
@@ -239,25 +148,18 @@ export function createDumplingsLoader(container, userOptions = {}) {
     for (let i = 0; i < n; i++) {
       const anchor = new THREE.Group();
       const tumbler = new THREE.Group();
-      const mesh = new THREE.Mesh(dumplingGeometry, doughMaterial);
+      const mesh = new THREE.Mesh(appearance.dumplingGeometry, appearance.dumplingMaterial);
       mesh.scale.setScalar(scale);
       withOutline(mesh);
       tumbler.add(mesh);
       anchor.add(tumbler);
       dumplingsGroup.add(anchor);
 
-      let shadow = null;
-      if (options.shadows) {
-        shadow = new THREE.Sprite(shadowMaterial);
-        shadow.position.y = 0.02;
-        dumplingsGroup.add(shadow);
-      }
-
-      dumplings.push({
+      const d = {
         anchor,
         tumbler,
         mesh,
-        shadow,
+        shadow: null,
         scale,
         baseAngle: (i / n) * Math.PI * 2 + randomIn(-0.08, 0.08),
         radius: RING_RADIUS + randomIn(-0.12, 0.12),
@@ -267,7 +169,12 @@ export function createDumplingsLoader(container, userOptions = {}) {
         bobRate: randomIn(1.6, 2.3),
         wobblePhase: randomIn(0, Math.PI * 2),
         yaw: randomIn(-0.25, 0.25),
-      });
+      };
+      if (options.shadows && appearance.shadow) {
+        d.shadow = appearance.shadow.create(d);
+        if (d.shadow) dumplingsGroup.add(d.shadow);
+      }
+      dumplings.push(d);
     }
   };
   buildDumplings(options.count);
@@ -275,7 +182,13 @@ export function createDumplingsLoader(container, userOptions = {}) {
   // ---------- Particles ----------
   const makeSprites = (texture, count, opacity) => {
     const material = track(
-      new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false, opacity }),
+      new THREE.SpriteMaterial({
+        map: texture,
+        transparent: true,
+        depthWrite: false,
+        opacity,
+        toneMapped: false,
+      }),
     );
     return Array.from({ length: count }, () => {
       const sprite = new THREE.Sprite(track(material.clone()));
@@ -285,30 +198,37 @@ export function createDumplingsLoader(container, userOptions = {}) {
     });
   };
 
-  const bubbles = options.bubbles ? makeSprites(track(createBubbleTexture()), 30, 0.8) : [];
-  const steam = options.steam
-    ? makeSprites(track(createSoftTexture('#ffffff', { falloff: 1.3 })), 10, 0.5)
+  const bubbleConfig = options.bubbles ? appearance.bubbles : null;
+  const bubbles = bubbleConfig
+    ? makeSprites(bubbleConfig.texture, bubbleConfig.count, bubbleConfig.opacity)
+    : [];
+
+  const steamLayers = options.steam
+    ? appearance.steam.map((layer) => ({
+        layer,
+        sprites: makeSprites(layer.texture, layer.count, layer.opacity),
+      }))
     : [];
 
   const spawnBubble = (b) => {
     const angle = Math.random() * Math.PI * 2;
-    const radius = Math.random() < 0.65 ? RING_RADIUS + randomIn(-1.3, 1.3) : randomIn(0, POT_RADIUS - 0.5);
+    const radius = bubbleConfig.radius();
     b.x = Math.cos(angle) * radius;
     b.z = Math.sin(angle) * radius;
-    b.size = randomIn(0.1, 0.32);
-    b.ttl = randomIn(0.7, 1.6);
+    b.size = randomIn(...bubbleConfig.size);
+    b.ttl = randomIn(...bubbleConfig.ttl);
     b.life = 0;
     b.sprite.visible = true;
   };
 
-  const spawnSteam = (s) => {
+  const spawnSteam = (s, layer) => {
     const angle = Math.random() * Math.PI * 2;
-    const radius = randomIn(0.3, POT_RADIUS - 0.4);
+    const radius = randomIn(...layer.radius);
     s.x = Math.cos(angle) * radius;
     s.z = Math.sin(angle) * radius;
-    s.size = randomIn(1.6, 3);
-    s.ttl = randomIn(3.5, 6);
-    s.drift = randomIn(-0.4, 0.4);
+    s.size = randomIn(...layer.size);
+    s.ttl = randomIn(...layer.ttl);
+    s.drift = randomIn(-layer.drift, layer.drift);
     s.life = 0;
     s.sprite.visible = true;
   };
@@ -317,22 +237,28 @@ export function createDumplingsLoader(container, userOptions = {}) {
     spawnBubble(b);
     b.life = Math.random() * b.ttl;
   });
-  steam.forEach((s) => {
-    spawnSteam(s);
-    s.life = Math.random() * s.ttl;
-  });
-
-  const rippleMaterial = track(
-    new THREE.MeshBasicMaterial({
-      color: colors.waterHighlight,
-      transparent: true,
-      opacity: 0.3,
-      depthWrite: false,
+  steamLayers.forEach(({ layer, sprites }) =>
+    sprites.forEach((s) => {
+      spawnSteam(s, layer);
+      s.life = Math.random() * s.ttl;
     }),
   );
-  const rippleGeometry = track(new THREE.RingGeometry(0.9, 1, 48));
-  const ripples = options.ripples
-    ? Array.from({ length: 6 }, () => {
+
+  const rippleConfig = options.ripples ? appearance.ripples : null;
+  const rippleMaterial = rippleConfig
+    ? track(
+        new THREE.MeshBasicMaterial({
+          color: rippleConfig.color,
+          transparent: true,
+          opacity: rippleConfig.opacity,
+          depthWrite: false,
+          toneMapped: false,
+        }),
+      )
+    : null;
+  const rippleGeometry = rippleConfig ? track(new THREE.RingGeometry(rippleConfig.inner, 1, 48)) : null;
+  const ripples = rippleConfig
+    ? Array.from({ length: rippleConfig.count }, () => {
         const mesh = new THREE.Mesh(rippleGeometry, track(rippleMaterial.clone()));
         mesh.rotation.x = -Math.PI / 2;
         mesh.position.y = 0.015;
@@ -389,7 +315,7 @@ export function createDumplingsLoader(container, userOptions = {}) {
       const angle = d.baseAngle + options.orbitSpeed * t;
       const radius = d.radius + Math.sin(t * 0.9 + d.wobblePhase) * 0.1;
       const lift = Math.sin(t * d.bobRate + d.bobPhase) * bobAmp;
-      d.anchor.position.set(Math.cos(angle) * radius, lift + 0.08, Math.sin(angle) * radius);
+      d.anchor.position.set(Math.cos(angle) * radius, lift + appearance.restHeight, Math.sin(angle) * radius);
       // Local +X points outwards from the pot centre, local +Z is the ring tangent.
       d.anchor.rotation.set(0, -angle, 0);
 
@@ -398,13 +324,7 @@ export function createDumplingsLoader(container, userOptions = {}) {
       d.tumbler.rotation.set(spin * mix + wobble * (1 - mix), 0, -spin * (1 - mix) + wobble * mix);
       d.mesh.rotation.y = d.yaw;
 
-      if (d.shadow) {
-        // Shadow drifts away from the key light and shrinks/fades as the pelmen lifts.
-        const liftFactor = 1 + lift * 1.5;
-        d.shadow.position.set(d.anchor.position.x + 0.22, 0.02, d.anchor.position.z + 0.18);
-        d.shadow.scale.setScalar(d.scale * 3.1 * liftFactor);
-        d.shadow.material.opacity = 0.28 / liftFactor;
-      }
+      if (d.shadow) appearance.shadow.update(d, lift);
     });
 
     bubbles.forEach((b) => {
@@ -413,28 +333,32 @@ export function createDumplingsLoader(container, userOptions = {}) {
       const p = b.life / b.ttl;
       const grow = THREE.MathUtils.smoothstep(p, 0, 0.6);
       const pop = p > 0.8 ? (p - 0.8) / 0.2 : 0;
-      b.sprite.position.set(b.x + Math.sin(b.life * 4) * 0.04, 0.3, b.z);
+      b.sprite.position.set(b.x + Math.sin(b.life * 4) * 0.04, bubbleConfig.y, b.z);
       b.sprite.scale.setScalar(b.size * (0.4 + 0.6 * grow) * (1 + pop * 0.8));
-      b.sprite.material.opacity = 0.8 * grow * (1 - pop);
+      b.sprite.material.opacity = bubbleConfig.opacity * grow * (1 - pop);
     });
 
-    steam.forEach((s) => {
-      s.life += dt;
-      if (s.life >= s.ttl) spawnSteam(s);
-      const p = s.life / s.ttl;
-      const fade = Math.sin(p * Math.PI);
-      s.sprite.position.set(s.x + Math.sin(s.life * 0.6) * 0.4 + s.drift * p * 2, 1.5, s.z - p * 1.2);
-      s.sprite.scale.setScalar(s.size * (0.7 + p * 0.8));
-      s.sprite.material.opacity = 0.5 * fade;
-    });
+    steamLayers.forEach(({ layer, sprites }) =>
+      sprites.forEach((s) => {
+        s.life += dt;
+        if (s.life >= s.ttl) spawnSteam(s, layer);
+        const p = s.life / s.ttl;
+        const fade = Math.sin(p * Math.PI);
+        s.sprite.position.set(s.x + Math.sin(s.life * 0.6) * 0.4 + s.drift * p * 2, layer.y, s.z - p * 1.2);
+        s.sprite.scale.setScalar(s.size * (0.7 + p * 0.8));
+        s.sprite.material.opacity = layer.opacity * fade;
+      }),
+    );
 
     ripples.forEach((r) => {
       r.life += dt;
       if (r.life >= r.ttl) spawnRipple(r);
       const p = r.life / r.ttl;
       r.mesh.scale.setScalar(0.4 + p * 1.3);
-      r.mesh.material.opacity = 0.3 * (1 - p) * (1 - p);
+      r.mesh.material.opacity = rippleConfig.opacity * (1 - p) * (1 - p);
     });
+
+    appearance.update?.(t, dt);
   };
 
   const render = () => renderer.render(scene, camera);
@@ -507,6 +431,9 @@ export function createDumplingsLoader(container, userOptions = {}) {
     renderer,
     get options() {
       return options;
+    },
+    get appearance() {
+      return appearanceModule.name;
     },
     setCount(count) {
       options = mergeOptions(options, { count });

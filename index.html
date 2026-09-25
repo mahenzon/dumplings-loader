@@ -70,6 +70,13 @@
         display: none;
       }
 
+      .tiny-real {
+        --dumplings-water: initial;
+        --dumplings-water-edge: initial;
+        --dumplings-pot: initial;
+        --dumplings-pot-inside: initial;
+      }
+
       .tiny-green {
         --dumplings-water: #dcefe3;
         --dumplings-water-edge: #b5d3c0;
@@ -80,9 +87,16 @@
   </head>
   <body>
     <main>
-      <dumplings-loader id="main" count="7" label="Loading"></dumplings-loader>
+      <dumplings-loader id="main" appearance="realistic" count="7" label="Loading"></dumplings-loader>
 
       <div class="controls">
+        <label
+          >look
+          <select id="appearance">
+            <option value="realistic">realistic</option>
+            <option value="cartoon">cartoon</option>
+          </select>
+        </label>
         <span class="control">
           <label for="count">count</label>
           <input id="count" type="range" min="1" max="14" value="7" />
@@ -104,6 +118,7 @@
       <div class="swatches">
         <dumplings-loader class="tiny" count="5" label="" tumble-speed="2.4"></dumplings-loader>
         <dumplings-loader class="tiny tiny-green" count="3" label="" spin-axis="radial"></dumplings-loader>
+        <dumplings-loader class="tiny tiny-real" appearance="realistic" count="5" label=""></dumplings-loader>
       </div>
     </main>
 
@@ -111,6 +126,7 @@
       import './src/index.js';
       const el = document.getElementById('main');
       const bind = (id, fn) => document.getElementById(id).addEventListener('input', (e) => fn(e.target));
+      bind('appearance', (i) => el.setAttribute('appearance', i.value));
       bind('count', (i) => {
         el.setAttribute('count', i.value);
         document.getElementById('countOut').value = i.value;

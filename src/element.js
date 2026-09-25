@@ -27,12 +27,25 @@ const flag = (element, name, fallback) => {
 };
 
 /**
- * <dumplings-loader count="7" label="Loading" orbit-speed="0.35" tumble-speed="1.7" spin-axis="tangent"></dumplings-loader>
+ * <dumplings-loader appearance="realistic" count="7" label="Loading" orbit-speed="0.35" tumble-speed="1.7"></dumplings-loader>
  * Size it with CSS (width / height or aspect-ratio). Colours via --dumplings-* custom properties.
+ * `appearance` is `cartoon` (default) or `realistic`; changing it rebuilds the scene.
  */
-export class DumplingsLoaderElement extends HTMLElement {
+// `extends HTMLElement` is evaluated at import time, which would throw during SSR (Next.js, Nuxt).
+const Base = typeof HTMLElement === 'undefined' ? class {} : HTMLElement;
+
+export class DumplingsLoaderElement extends Base {
   static get observedAttributes() {
-    return ['count', 'label', 'label-position', 'orbit-speed', 'tumble-speed', 'spin-axis', 'paused'];
+    return [
+      'appearance',
+      'count',
+      'label',
+      'label-position',
+      'orbit-speed',
+      'tumble-speed',
+      'spin-axis',
+      'paused',
+    ];
   }
 
   #loader = null;
@@ -50,8 +63,7 @@ export class DumplingsLoaderElement extends HTMLElement {
 
   connectedCallback() {
     if (this.#loader) return;
-    this.#loader = createDumplingsLoader(this.#mount, this.#readOptions());
-    if (flag(this, 'paused', false)) this.#loader.pause();
+    this.#mountLoader();
   }
 
   disconnectedCallback() {
@@ -63,6 +75,9 @@ export class DumplingsLoaderElement extends HTMLElement {
     const loader = this.#loader;
     if (!loader) return;
     switch (name) {
+      case 'appearance':
+        if ((value || DEFAULT_OPTIONS.appearance) !== loader.appearance) this.#mountLoader();
+        break;
       case 'count':
         loader.setCount(num(value, DEFAULT_OPTIONS.count));
         break;
@@ -95,6 +110,12 @@ export class DumplingsLoaderElement extends HTMLElement {
     return this.#loader;
   }
 
+  #mountLoader() {
+    this.#loader?.destroy();
+    this.#loader = createDumplingsLoader(this.#mount, this.#readOptions());
+    if (flag(this, 'paused', false)) this.#loader.pause();
+  }
+
   #readOptions() {
     const computed = getComputedStyle(this);
     const colors = {};
@@ -103,6 +124,7 @@ export class DumplingsLoaderElement extends HTMLElement {
       if (value) colors[key] = value;
     }
     return {
+      appearance: this.getAttribute('appearance') || DEFAULT_OPTIONS.appearance,
       count: num(this.getAttribute('count'), DEFAULT_OPTIONS.count),
       label: this.hasAttribute('label') ? this.getAttribute('label') : DEFAULT_OPTIONS.label,
       labelPosition: this.getAttribute('label-position') || DEFAULT_OPTIONS.labelPosition,
