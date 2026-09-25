@@ -70,8 +70,8 @@ export function Spinner({ busy }) {
 ```
 
 Props are the attributes in camelCase (`labelPosition`, `orbitSpeed`, `tumbleSpeed`, `spinAxis`,
-`paused`, `outline`, `bubbles`, `steam`, `ripples`, `shadows`) plus `className`, `style`, `id`,
-`data-*` / `aria-*`. `ref` gives you the element; `ref.current.loader` is the
+`randomness`, `paused`, `outline`, `bubbles`, `steam`, `ripples`, `shadows`) plus `className`,
+`style`, `id`, `data-*` / `aria-*`. `ref` gives you the element; `ref.current.loader` is the
 [imperative handle](#plain-js-api). React 17+, marked `'use client'` for the Next.js App Router.
 
 The raw tag works too (`import 'dumplings-loader'`, then `<dumplings-loader count={7} />`); the
@@ -152,6 +152,7 @@ Attributes of `<dumplings-loader>` (the JS API takes the same options in camelCa
 | `orbit-speed`                               | `0.35`    | Ring rotation, rad/s. Negative reverses direction.                                            |
 | `tumble-speed`                              | `1.7`     | Per-pelmen flip speed, rad/s.                                                                 |
 | `spin-axis`                                 | `tangent` | `tangent` (flip toward the centre, like the video), `radial` (roll along the ring), `mixed`.  |
+| `randomness`                                | `0`       | `0`–`1`: smooth random drift (slot, radius, flip speed, tilt). Bare = `1`. Live-updatable.    |
 | `paused`                                    | –         | Present (and not `"false"`) → animation paused.                                               |
 | `outline`                                   | `false`   | Thin ink outline around meshes (read once on mount).                                          |
 | `bubbles` / `steam` / `ripples` / `shadows` | `true`    | Set to `"false"` to disable a layer (read once on mount).                                     |
@@ -192,6 +193,7 @@ const loader = createDumplingsLoader(document.querySelector('#spinner'), {
   orbitSpeed: 0.35,
   tumbleSpeed: 1.7,
   spinAxis: 'tangent',
+  randomness: 0, // 0..1, a little organic drift; off by default
   label: 'Loading',
   labelPosition: 'top',
   colors: { water: '#dbe8ee', dough: '#f2e3c3' },
@@ -199,6 +201,7 @@ const loader = createDumplingsLoader(document.querySelector('#spinner'), {
 
 loader.setCount(9);
 loader.setSpeed({ orbit: 0.5, tumble: 2 });
+loader.setRandomness(0.5);
 loader.setLabel('Cooking');
 loader.pause();
 loader.resume();
@@ -235,6 +238,8 @@ namespace) add a reference in any `.d.ts` of your project:
 - Renders on a transparent canvas, so it sits on any background.
 - Pauses automatically when off-screen or when the tab is hidden.
 - Honours `prefers-reduced-motion` (renders one static frame). Override with `reducedMotion: false`.
+- Motion is deterministic by default (only the initial phases are random). `randomness` adds a
+  smooth, low-frequency random drift per pelmen; it never jumps and is eased in when changed live.
 - Pixel ratio capped at 2 (the realistic look renders at 0.7x of that for a soft-focus feel).
   Override with the `pixelRatio` option.
 - Everything is procedural: no textures or models to load; the realistic look generates its noise

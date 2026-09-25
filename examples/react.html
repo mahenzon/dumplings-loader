@@ -33,16 +33,30 @@
         const [count, setCount] = useState(6);
         const [paused, setPaused] = useState(false);
         const [appearance, setAppearance] = useState('realistic');
+        const [randomness, setRandomness] = useState(false);
         const ref = useRef(null);
         return h(
           'div',
           null,
-          h(DumplingsLoader, { ref, appearance, count, paused, label: 'React', style: { width: 300 } }),
+          h(DumplingsLoader, {
+            ref,
+            appearance,
+            count,
+            paused,
+            randomness,
+            label: 'React',
+            style: { width: 300 },
+          }),
           h(
             'div',
             { className: 'row' },
             h('button', { onClick: () => setCount((c) => c + 1) }, `count ${count} +`),
             h('button', { onClick: () => setPaused((p) => !p) }, paused ? 'resume' : 'pause'),
+            h(
+              'button',
+              { onClick: () => setRandomness((r) => !r) },
+              `randomness: ${randomness ? 'on' : 'off'}`,
+            ),
             h(
               'button',
               { onClick: () => setAppearance((a) => (a === 'cartoon' ? 'realistic' : 'cartoon')) },

@@ -112,6 +112,11 @@
             <option value="mixed">mixed</option>
           </select>
         </label>
+        <span class="control">
+          <label for="randomness">randomness</label>
+          <input id="randomness" type="range" min="0" max="1" step="0.05" value="0" />
+          <output id="randomnessOut" for="randomness">0</output>
+        </span>
         <label><input id="paused" type="checkbox" /> paused</label>
       </div>
 
@@ -134,6 +139,10 @@
       bind('orbit', (i) => el.setAttribute('orbit-speed', i.value));
       bind('tumble', (i) => el.setAttribute('tumble-speed', i.value));
       bind('axis', (i) => el.setAttribute('spin-axis', i.value));
+      bind('randomness', (i) => {
+        el.setAttribute('randomness', i.value);
+        document.getElementById('randomnessOut').value = i.value;
+      });
       bind('paused', (i) => (i.checked ? el.setAttribute('paused', '') : el.removeAttribute('paused')));
     </script>
   </body>
