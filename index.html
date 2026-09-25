@@ -57,6 +57,19 @@
         gap: 12px;
       }
 
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 20px;
+        justify-content: center;
+        font-size: 14px;
+        opacity: 0.85;
+      }
+
+      .links a {
+        color: inherit;
+      }
+
       .tiny {
         width: 120px;
 
@@ -125,6 +138,13 @@
         <dumplings-loader class="tiny tiny-green" count="3" label="" spin-axis="radial"></dumplings-loader>
         <dumplings-loader class="tiny tiny-real" appearance="realistic" count="5" label=""></dumplings-loader>
       </div>
+
+      <nav class="links" aria-label="Project links">
+        <a href="https://github.com/mahenzon/dumplings-loader">Source on GitHub</a>
+        <a href="https://github.com/mahenzon/dumplings-loader#readme">Docs &amp; usage</a>
+        <a href="https://www.npmjs.com/package/dumplings-loader">npm</a>
+        <a href="https://github.com/mahenzon/dumplings-loader/blob/master/LICENSE">MIT</a>
+      </nav>
     </main>
 
     <script type="module">
