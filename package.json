@@ -17,6 +17,10 @@
       "types": "./types/react.d.ts",
       "default": "./dist/dumplings-loader.react.js"
     },
+    "./vue": {
+      "types": "./types/vue.d.ts",
+      "default": "./dist/dumplings-loader.vue.js"
+    },
     "./standalone": {
       "types": "./types/index.d.ts",
       "default": "./dist/dumplings-loader.standalone.js"
@@ -51,7 +55,7 @@
     "lint:html": "html-validate index.html examples/*.html",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint:types": "tsc -p scripts/tsconfig.types.json",
+    "lint:types": "tsc -p scripts/tsconfig.types.json && vue-tsc --noEmit -p scripts/tsconfig.types-vue.json",
     "capture": "node scripts/capture-server.mjs",
     "prepare": "npm run build",
     "prepublishOnly": "npm run lint"
@@ -77,11 +81,15 @@
     "url": "https://github.com/mahenzon/dumplings-loader/issues"
   },
   "peerDependencies": {
+    "react": ">=17",
     "three": ">=0.160.0",
-    "react": ">=17"
+    "vue": ">=3.3"
   },
   "peerDependenciesMeta": {
     "react": {
+      "optional": true
+    },
+    "vue": {
       "optional": true
     }
   },
@@ -99,8 +107,10 @@
     "stylelint": "^17.15.0",
     "stylelint-config-standard": "^40.0.0",
     "three": "^0.186.0",
-    "typescript": "^7.0.2",
-    "vite": "^8.3.0"
+    "typescript": "^5.9.3",
+    "vite": "^8.3.0",
+    "vue": "^3.5.42",
+    "vue-tsc": "^3.3.11"
   },
   "publishConfig": {
     "access": "public",

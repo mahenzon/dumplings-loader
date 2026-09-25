@@ -65,7 +65,8 @@ The custom element is the product; framework wrappers are optional sugar. Why on
   the wrapper adds camelCase typed props, a `ref` to the element and the `'use client'` boundary
   for the Next.js App Router.
 - **Vue 3** resolves attributes and properties on custom elements natively; it only needs
-  `isCustomElement` so the template compiler stops warning. A wrapper would add nothing but types.
+  `isCustomElement` so the template compiler stops warning. The `dumplings-loader/vue` wrapper
+  exists for typing: it ships a typed component and teaches vue-tsc about the raw tag.
 - **Angular** documents `CUSTOM_ELEMENTS_SCHEMA` + `[attr.x]` bindings as the way to use custom
   elements. A wrapper would be a compiled component depending on `@angular/core`, heavier than the
   element itself.
@@ -95,23 +96,30 @@ The raw tag works too (`import 'dumplings-loader'`, then `<dumplings-loader coun
 
 ```vue
 <script setup>
-import 'dumplings-loader';
+import { DumplingsLoader } from 'dumplings-loader/vue';
 </script>
 
 <template>
-  <dumplings-loader appearance="realistic" :count="7" label="Loading" style="width: 200px" />
+  <DumplingsLoader appearance="realistic" :count="7" label="Loading" style="width: 200px" />
 </template>
 ```
 
-Tell the template compiler it is a custom element, otherwise Vue warns about an unknown component:
+Props are the attributes in camelCase (`labelPosition`, `orbitSpeed`, `tumbleSpeed`, `spinAxis`,
+`randomness`, `paused`, `outline`, `bubbles`, `steam`, `ripples`, `shadows`); `class`, `style`
+and `id` fall through. A template ref gives the component; `ref.value.$el.loader` is the
+[imperative handle](#plain-js-api). Works with SSR (Nuxt).
+
+The raw tag works too. Importing `dumplings-loader/vue` anywhere in a TypeScript project also
+types `<dumplings-loader>` for vue-tsc / Volar (attributes are kebab-case there:
+`label-position`, `:orbit-speed`). With the raw tag, tell the template compiler it is a custom
+element, otherwise Vue warns about an unknown component:
 
 ```js
 // vite.config.js
 vue({ template: { compilerOptions: { isCustomElement: (tag) => tag === 'dumplings-loader' } } });
 ```
 
-Nuxt: same option under `vue.compilerOptions` in `nuxt.config`, and import the package from a
-`plugins/dumplings.client.js` plugin (or inside `<ClientOnly>`).
+Nuxt: same option under `vue.compilerOptions` in `nuxt.config`.
 
 ### Angular
 
@@ -229,7 +237,8 @@ does this for you when the attribute changes). `APPEARANCE_NAMES` lists the avai
 
 ## TypeScript
 
-Declarations ship with the package for `dumplings-loader` and `dumplings-loader/react`. To type
+Declarations ship with the package for `dumplings-loader`, `dumplings-loader/react` and
+`dumplings-loader/vue` (the last one also types the raw tag in `.vue` templates). To type
 the raw `<dumplings-loader>` tag outside React (Preact, Solid, React <= 18 with the global `JSX`
 namespace) add a reference in any `.d.ts` of your project:
 
@@ -243,6 +252,7 @@ namespace) add a reference in any `.d.ts` of your project:
 | --------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | `dumplings-loader`                                                    | ES module, `three` external (peer). Registers the element.                 |
 | `dumplings-loader/react`                                              | React component wrapper (`react` optional peer).                           |
+| `dumplings-loader/vue`                                                | Vue 3 component wrapper + template typing (`vue` optional peer).           |
 | `dumplings-loader/standalone`                                         | ES module with Three.js bundled.                                           |
 | `https://unpkg.com/dumplings-loader` (IIFE, `window.DumplingsLoader`) | Script tag with Three.js bundled; also `dumplings-loader/standalone-iife`. |
 | `dumplings-loader/jsx`                                                | Types only: global JSX typing for the tag.                                 |
@@ -263,16 +273,17 @@ namespace) add a reference in any `.d.ts` of your project:
 
 ```bash
 npm install
-npm run dev           # demo at http://localhost:5173; /examples/react.html tests the React wrapper
+npm run dev           # demo at http://localhost:5173; /examples/{react,vue}.html test the wrappers
 npm run build         # dist/ (lib + react entry + standalone builds)
 npm run build:site    # site/ (demo for GitHub Pages; set BASE_PATH=/<repo>/ for project pages)
 npm run preview:site  # serve site/ locally
-npm run lint          # ESLint + Stylelint + html-validate + tsc (types) + Prettier check
+npm run lint          # ESLint + Stylelint + html-validate + tsc/vue-tsc (types) + Prettier check
 npm run format        # Prettier write
 npm run capture       # then open /scripts/capture.html on the dev server → regenerates docs/demo.webp
 ```
 
-`examples/standalone.html` tests the IIFE build after `npm run build`; `examples/static-cdn.html`
+TypeScript is pinned to 5.x in devDependencies until vue-tsc supports the TypeScript 7 native
+compiler; it only checks the shipped declarations. `examples/standalone.html` tests the IIFE build after `npm run build`; `examples/static-cdn.html`
 and `examples/static-esm.html` are the copy-paste templates for static pages.
 
 ## Releasing

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>dumplings-loader – Vue wrapper smoke test</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #fff8ee;
+        font-family: system-ui, sans-serif;
+      }
+
+      .row {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- Dev-only: run `npm run dev` and open /examples/vue.html. Uses ../src/vue.js directly. -->
+    <script type="module">
+      import { createApp, h, ref } from 'vue';
+      import { DumplingsLoader } from '../src/vue.js';
+
+      createApp({
+        setup() {
+          const count = ref(6);
+          const paused = ref(false);
+          const appearance = ref('realistic');
+          const el = ref(null);
+          return () =>
+            h('div', [
+              h(DumplingsLoader, {
+                ref: el,
+                appearance: appearance.value,
+                count: count.value,
+                paused: paused.value,
+                label: 'Vue',
+                style: { width: '300px' },
+              }),
+              h('div', { class: 'row' }, [
+                h('button', { onClick: () => count.value++ }, `count ${count.value} +`),
+                h(
+                  'button',
+                  { onClick: () => (paused.value = !paused.value) },
+                  paused.value ? 'resume' : 'pause',
+                ),
+                h(
+                  'button',
+                  {
+                    onClick: () =>
+                      (appearance.value = appearance.value === 'cartoon' ? 'realistic' : 'cartoon'),
+                  },
+                  `look: ${appearance.value}`,
+                ),
+                h('button', { onClick: () => el.value?.$el?.loader?.setLabel('via ref') }, 'ref → setLabel'),
+              ]),
+            ]);
+        },
+      }).mount('#app');
+    </script>
+  </body>
+</html>

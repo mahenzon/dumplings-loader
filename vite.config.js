@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 
-// Library build: three.js (and react for the ./react entry) are peer dependencies,
+// Library build: three.js (react / vue for the ./react and ./vue entries) are peer dependencies,
 // tree-shaken by the consumer's bundler. Shared code lands in dist/chunks/.
 export default defineConfig({
   build: {
@@ -8,12 +8,13 @@ export default defineConfig({
       entry: {
         'dumplings-loader': 'src/index.js',
         'dumplings-loader.react': 'src/react.js',
+        'dumplings-loader.vue': 'src/vue.js',
       },
       formats: ['es'],
       fileName: (_format, entryName) => `${entryName}.js`,
     },
     rollupOptions: {
-      external: ['three', /^three\//, 'react', /^react\//],
+      external: ['three', /^three\//, 'react', /^react\//, 'vue'],
       output: {
         chunkFileNames: 'chunks/[name].js',
         // Next.js App Router: the wrapper uses refs/effects, so it must be a client component.
