@@ -45,20 +45,22 @@ dumplings-loader {
   --dumplings-pot: #e6dbe9;
   --dumplings-pot-inside: #a58fae;
 }
-dumplings-loader::part(label) { font-family: 'Comic Neue', cursive; }
+dumplings-loader::part(label) {
+  font-family: 'Comic Neue', cursive;
+}
 ```
 
-| Attribute        | Default   | Description                                                   |
-| ---------------- | --------- | ------------------------------------------------------------- |
-| `count`          | `7`       | Number of pelmeni on the ring. Live-updatable.                |
-| `label`          | `Loading` | Text under/over the pot. Empty string hides it.               |
-| `label-position` | `top`     | `top`, `bottom` or `none`.                                    |
-| `orbit-speed`    | `0.35`    | Ring rotation, rad/s. Negative reverses direction.            |
-| `tumble-speed`   | `1.7`     | Per-pelmen flip speed, rad/s.                                 |
-| `spin-axis`      | `tangent` | `tangent` (flip toward the centre, like the video), `radial` (roll along the ring), `mixed`. |
-| `paused`         | –         | Present → animation paused.                                   |
-| `outline`        | `false`   | Set `outline` to add a thin ink outline around meshes (read once on mount). |
-| `bubbles` / `steam` / `ripples` / `shadows` | `true` | Set to `"false"` to disable a layer (read once on mount). |
+| Attribute                                   | Default   | Description                                                                                  |
+| ------------------------------------------- | --------- | -------------------------------------------------------------------------------------------- |
+| `count`                                     | `7`       | Number of pelmeni on the ring. Live-updatable.                                               |
+| `label`                                     | `Loading` | Text under/over the pot. Empty string hides it.                                              |
+| `label-position`                            | `top`     | `top`, `bottom` or `none`.                                                                   |
+| `orbit-speed`                               | `0.35`    | Ring rotation, rad/s. Negative reverses direction.                                           |
+| `tumble-speed`                              | `1.7`     | Per-pelmen flip speed, rad/s.                                                                |
+| `spin-axis`                                 | `tangent` | `tangent` (flip toward the centre, like the video), `radial` (roll along the ring), `mixed`. |
+| `paused`                                    | –         | Present → animation paused.                                                                  |
+| `outline`                                   | `false`   | Set `outline` to add a thin ink outline around meshes (read once on mount).                  |
+| `bubbles` / `steam` / `ripples` / `shadows` | `true`    | Set to `"false"` to disable a layer (read once on mount).                                    |
 
 CSS custom properties (read once on mount): `--dumplings-dough`, `--dumplings-water`,
 `--dumplings-water-edge`, `--dumplings-water-highlight`, `--dumplings-pot`, `--dumplings-pot-inside`,
@@ -134,6 +136,8 @@ npm run dev           # demo at http://localhost:5173 (examples/standalone.html 
 npm run build         # dist/ (lib + standalone builds)
 npm run build:site    # site/ (demo for GitHub Pages; set BASE_PATH=/<repo>/ for project pages)
 npm run preview:site  # serve site/ locally
+npm run lint          # ESLint + Stylelint + html-validate + Prettier check
+npm run format        # Prettier write
 ```
 
 ## Releasing to GitHub Pages
